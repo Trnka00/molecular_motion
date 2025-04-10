@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Simulace pohybu částic – Vylepšené rozhraní</title>
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Pro ikony (pencil) lze použít Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
+  <style>
+    body {
+      background-color: #f4f4f9;
+    }
+    /* Levý sidebar – ovládací prvky */
+    .left-sidebar {
+      background-color: #343a40;
+      color: #fff;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    /* Pravý sidebar – informační karty */
+    .right-sidebar {
+      background-color: #f8f9fa;
+      min-height: 100vh;
+      padding: 20px;
+      border-left: 1px solid #dee2e6;
+    }
+    .right-sidebar .card {
+      margin-bottom: 20px;
+    }
+    .canvas-container {
+      position: relative;
+      padding: 0;
+      background-color: #ffffff;
+      border: 1px solid #dee2e6;
+      border-radius: 0.25rem;
+      margin: 20px 0;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      max-width: 600px;
+      height: 400px;
+      margin: 0 auto;
+      background-color: #fff;
+      border: 1px solid #333;
+    }
+    /* Styl pístu */
+    .piston {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 30px;
+      background: radial-gradient(ellipse at center, #ccc 0%, #777 100%);
+      border: 2px solid #555;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .piston::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: -30px;
+      transform: translateX(-50%);
+      width: 40px;
+      height: 20px;
+      background: repeating-linear-gradient(
+        45deg,
+        #777,
+        #777 2px,
+        #333 2px,
+        #333 4px
+      );
+      border: 2px solid #555;
+      border-radius: 4px;
+    }
+    /* Tmavý mód */
+    .dark-mode {
+      background-color: #121212;
+      color: #e0e0e0;
+    }
+    .dark-mode .left-sidebar {
+      background-color: #212529;
+    }
+    .dark-mode .canvas-container {
+      background-color: #343a40;
+      border-color: #444;
+    }
+    .dark-mode canvas {
+      background-color: #121212;
+      border: 1px solid #555;
+    }
+  </style>
+</head>
+<body>
+  <div class="container-fluid">
+    <div class="row">
+      <!-- Levý sidebar – ovládací prvky -->
+      <div class="col-md-3 left-sidebar">
+        <h2>Ovládání</h2>
+        <!-- Accordion pro nastavení -->
+        <div class="accordion mb-3" id="settingsAccordion">
+          <!-- Simulační parametry -->
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingSim">
+              <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSim" aria-expanded="true" aria-controls="collapseSim">
+                Simulační parametry
+              </button>
+            </h2>
+            <div id="collapseSim" class="accordion-collapse collapse show" aria-labelledby="headingSim" data-bs-parent="#settingsAccordion">
+              <div class="accordion-body">
+                <div class="mb-3">
+                  <label for="temperature" class="form-label">Teplota: <span id="temperatureValue">150 K</span></label>
+                  <input type="range" class="form-range" id="temperature" min="0" max="1000" value="150">
+                </div>
+                <div class="mb-3">
+                  <label for="numParticles" class="form-label">Počet částic:</label>
+                  <input type="number" class="form-control" id="numParticles" min="1" max="1000" value="1000">
+                </div>
+                <div class="mb-3">
+                  <label for="particleSize" class="form-label">Velikost částic:</label>
+                  <input type="number" class="form-control" id="particleSize" min="1" max="20" value="3">
+                </div>
+                <div class="mb-3">
+                  <label for="gravity" class="form-label">Gravitace: <span id="gravityValue">0.001</span></label>
+                  <input type="range" class="form-range" id="gravity" min="0" max="0.01" step="0.001" value="0.001">
+                </div>
+                <div class="mb-3">
+                  <button id="toggleTrajectory" class="btn btn-secondary w-100">Zobrazit trajektorii</button>
+                </div>
+                <div class="mb-3">
+                  <button id="clearTrajectory" class="btn btn-secondary w-100">Smazat trajektorii</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Vzhled a další volby -->
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingAppearance">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAppearance" aria-expanded="false" aria-controls="collapseAppearance">
+                Vzhled a funkce
+              </button>
+            </h2>
+            <div id="collapseAppearance" class="accordion-collapse collapse" aria-labelledby="headingAppearance" data-bs-parent="#settingsAccordion">
+              <div class="accordion-body">
+                <div class="mb-3">
+                  <label for="particleColor" class="form-label">Barva částic:</label>
+                  <select class="form-select" id="particleColor">
+                    <option value="#007BFF">Modrá</option>
+                    <option value="#FF5733">Červená</option>
+                    <option value="#28A745">Zelená</option>
+                    <option value="#FFD700">Zlatá</option>
+                    <option value="#8A2BE2">Fialová</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label for="particleShape" class="form-label">Tvar částice:</label>
+                  <select class="form-select" id="particleShape">
+                    <option value="circle">Kruh</option>
+                    <option value="h2o">H2O</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Rychlé presety:</label>
+                  <div class="d-flex gap-2">
+                    <button id="presetGas" class="btn btn-secondary flex-fill">Plyn</button>
+                    <button id="presetLiquid" class="btn btn-secondary flex-fill">Kapalina</button>
+                    <button id="presetSolid" class="btn btn-secondary flex-fill">Pevná látka</button>
+                  </div>
+                </div>
+                <!-- Přepínač tmavého/světlého módu -->
+                <div class="mb-3 form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="themeToggle">
+                  <label class="form-check-label" for="themeToggle">Tmavý mód</label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Tlačítko pro potvrzení nastavení -->
+        <div class="mb-3">
+          <button id="applySettings" class="btn btn-primary w-100">Potvrdit nastavení</button>
+        </div>
+      </div>
+      <!-- Střední sloupec – canvas -->
+      <div class="col-md-6 d-flex align-items-center justify-content-center">
+        <div class="canvas-container" id="canvasContainer">
+          <canvas id="simulationCanvas" width="600" height="400"></canvas>
+          <div id="piston" class="piston"></div>
+        </div>
+      </div>
+      <!-- Pravý sidebar – informační karty -->
+      <div class="col-md-3 right-sidebar">
+        <h5>Informační karty</h5>
+        <div class="card">
+          <div class="card-header">
+            <span id="cardTitle1">Teorie 1</span>
+            <button class="btn btn-sm btn-outline-primary float-end" data-bs-toggle="modal" data-bs-target="#editCard1">
+              <i class="bi bi-pencil"></i>
+            </button>
+          </div>
+          <div class="card-body" id="cardContent1">
+            <p class="card-text">Zde naleznete stručné vysvětlení principů molekulárního pohybu a změn skupenství, vhodné pro výuku.</p>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span id="cardTitle2">Teorie 2</span>
+            <button class="btn btn-sm btn-outline-primary float-end" data-bs-toggle="modal" data-bs-target="#editCard2">
+              <i class="bi bi-pencil"></i>
+            </button>
+          </div>
+          <div class="card-body" id="cardContent2">
+            <p class="card-text">Informace o kinetické teorii a praktických experimentech, které lze demonstrovat pomocí aplikace.</p>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span id="cardTitle3">Teorie 3</span>
+            <button class="btn btn-sm btn-outline-primary float-end" data-bs-toggle="modal" data-bs-target="#editCard3">
+              <i class="bi bi-pencil"></i>
+            </button>
+          </div>
+          <div class="card-body" id="cardContent3">
+            <p class="card-text">Tipy a návody pro učitele, jak využít simulaci ve výuce fyziky a chemie.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modály pro editaci karet -->
+  <!-- Editace karty 1 -->
+  <div class="modal fade" id="editCard1" tabindex="-1" aria-labelledby="editCardLabel1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editCardLabel1">Upravit kartu - Teorie 1</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zavřít"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="cardTitle1Input" class="form-label">Titulek:</label>
+            <input type="text" class="form-control" id="cardTitle1Input" value="Teorie 1">
+          </div>
+          <div class="mb-3">
+            <label for="cardText1Input" class="form-label">Text karty (podpora tučného formátování pomocí <strong>HTML tagů</strong>):</label>
+            <textarea id="cardText1Input" class="form-control" rows="5">
+<p class="card-text"><strong>Zde naleznete stručné vysvětlení principů molekulárního pohybu a změn skupenství, vhodné pro výuku.</strong></p>
+            </textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="clearCard1">Smazat</button>
+          <button type="button" class="btn btn-primary" id="saveCard1" data-bs-dismiss="modal">Uložit</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Editace karty 2 -->
+  <div class="modal fade" id="editCard2" tabindex="-1" aria-labelledby="editCardLabel2" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editCardLabel2">Upravit kartu - Teorie 2</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zavřít"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="cardTitle2Input" class="form-label">Titulek:</label>
+            <input type="text" class="form-control" id="cardTitle2Input" value="Teorie 2">
+          </div>
+          <div class="mb-3">
+            <label for="cardText2Input" class="form-label">Text karty:</label>
+            <textarea id="cardText2Input" class="form-control" rows="5">
+<p class="card-text">Informace o kinetické teorii a praktických experimentech, které lze demonstrovat pomocí aplikace.</p>
+            </textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="clearCard2">Smazat</button>
+          <button type="button" class="btn btn-primary" id="saveCard2" data-bs-dismiss="modal">Uložit</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Editace karty 3 -->
+  <div class="modal fade" id="editCard3" tabindex="-1" aria-labelledby="editCardLabel3" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editCardLabel3">Upravit kartu - Teorie 3</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zavřít"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="cardTitle3Input" class="form-label">Titulek:</label>
+            <input type="text" class="form-control" id="cardTitle3Input" value="Teorie 3">
+          </div>
+          <div class="mb-3">
+            <label for="cardText3Input" class="form-label">Text karty:</label>
+            <textarea id="cardText3Input" class="form-control" rows="5">
+<p class="card-text">Tipy a návody pro učitele, jak využít simulaci ve výuce fyziky a chemie.</p>
+            </textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="clearCard3">Smazat</button>
+          <button type="button" class="btn btn-primary" id="saveCard3" data-bs-dismiss="modal">Uložit</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Skript s funkcionalitou -->
+  <script src="script.js"></script>
+  <!-- Bootstrap 5 JS Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
