@@ -49,14 +49,14 @@
     /* Styl pístu */
     .piston {
       position: absolute;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 600px;
+      left: 0;
+      width: 100%; /* Nově: vždy přes celý canvas */
       height: 30px;
       background: radial-gradient(ellipse at center, #ccc 0%, #777 100%);
       border: 2px solid #555;
       border-radius: 4px;
       cursor: pointer;
+      transform: none; /* Odstraň translateX(-50%) */
     }
     .piston::after {
       content: "";
