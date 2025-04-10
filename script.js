@@ -302,7 +302,7 @@ function animate() {
   requestAnimationFrame(animate);
 }
 
-// Manipulace s pístem
+// Manipulace s pístem myší
 piston.addEventListener('mousedown', () => { isDragging = true; });
 window.addEventListener('mouseup', () => { isDragging = false; });
 window.addEventListener('mousemove', (e) => {
@@ -318,6 +318,34 @@ window.addEventListener('mousemove', (e) => {
     pistonSimY = pistonVisualY;
   }
 });
+
+// manipulace pístem pomocí dotyku
+piston.addEventListener('touchstart', () => {
+  isDragging = true;
+});
+
+window.addEventListener('touchend', () => {
+  isDragging = false;
+});
+
+window.addEventListener('touchmove', (e) => {
+  if (isDragging) {
+    const containerRect = canvasContainer.getBoundingClientRect();
+    const touch = e.touches[0]; // první dotek
+    const minY = 0;
+    const maxY = canvas.height;
+
+    let newTop = touch.clientY - containerRect.top;
+    if (newTop < minY) newTop = minY;
+    if (newTop > maxY) newTop = maxY;
+
+    pistonVisualY = newTop;
+    piston.style.top = pistonVisualY + "px";
+    pistonSimY = pistonVisualY;
+
+    e.preventDefault(); // Zabrání posouvání stránky
+  }
+}, { passive: false }); // Nutné pro preventDefault v některých prohlížečích
 
 animate();
 
