@@ -112,21 +112,20 @@
             <div id="collapseSim" class="accordion-collapse collapse show" aria-labelledby="headingSim" data-bs-parent="#settingsAccordion">
               <div class="accordion-body">
                 <div class="mb-3">
-                  <label for="temperature" class="form-label">Teplota: <span id="temperatureValue">150 K</span></label>
-                  <input type="range" class="form-range" id="temperature" min="0" max="1000" value="150">
+                  <label for="temperature" class="form-label">Teplota: <span id="temperatureValue">0</span></label>
+                  <input type="range" class="form-range" id="temperature" min="5" max="250"  value="118">
+                  
+
                 </div>
                 <div class="mb-3">
                   <label for="numParticles" class="form-label">Počet částic:</label>
-                  <input type="number" class="form-control" id="numParticles" min="1" max="1000" value="1000">
+                  <input type="number" class="form-control" id="numParticles" min="1" max="1000" value="500">
                 </div>
                 <div class="mb-3">
                   <label for="particleSize" class="form-label">Velikost částic:</label>
-                  <input type="number" class="form-control" id="particleSize" min="1" max="20" value="3">
+                  <input type="number" class="form-control" id="particleSize" min="1" max="20" value="5">
                 </div>
-                <div class="mb-3">
-                  <label for="gravity" class="form-label">Gravitace: <span id="gravityValue">0.001</span></label>
-                  <input type="range" class="form-range" id="gravity" min="0" max="0.01" step="0.001" value="0.001">
-                </div>
+               
                 <div class="mb-3">
                   <button id="toggleTrajectory" class="btn btn-secondary w-100">Zobrazit trajektorii</button>
                 </div>

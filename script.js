@@ -2,8 +2,6 @@ const temperatureSlider = document.getElementById('temperature');
 const temperatureValue = document.getElementById('temperatureValue');
 const numParticlesInput = document.getElementById('numParticles');
 const particleSizeInput = document.getElementById('particleSize');
-const gravitySlider = document.getElementById('gravity');
-const gravityValue = document.getElementById('gravityValue');
 const particleShapeSelect = document.getElementById('particleShape');
 const particleColorSelect = document.getElementById('particleColor');
 const applySettingsButton = document.getElementById('applySettings');
@@ -26,7 +24,7 @@ const pistonHeight = 30;
 let particles = [];
 let numParticles = parseInt(numParticlesInput.value, 10);
 let particleSize = parseInt(particleSizeInput.value, 10);
-let gravity = parseFloat(gravitySlider.value);
+const gravity = 0.002; // Hardcoded gravity value
 let particleShape = particleShapeSelect.value;
 let particleColor = particleColorSelect.value;
 
@@ -41,10 +39,6 @@ let pistonSimY = 0;
 let isDragging = false;
 
 // Event listenery
-gravitySlider.addEventListener('input', (e) => {
-  gravity = parseFloat(e.target.value);
-  gravityValue.textContent = gravity.toFixed(3);
-});
 particleShapeSelect.addEventListener('change', (e) => {
   particleShape = e.target.value;
 });
@@ -97,6 +91,11 @@ window.addEventListener('load', () => {
   pistonSimY = 0;
   piston.style.top = "0px";
   
+  // Update initial temperature display
+  const inputValue = parseInt(temperatureSlider.value, 10);
+  const displayValue = Math.round(-5 + (inputValue - 5) * (115 / 115));
+  temperatureValue.textContent = `${displayValue} °C`;
+  
   // Načtení poznámek z localStorage
   const note1 = localStorage.getItem('note1');
   if(note1) document.getElementById('noteText1').value = note1;
@@ -125,7 +124,10 @@ window.addEventListener('load', () => {
 startSimulation();
 
 temperatureSlider.addEventListener('input', (e) => {
-  temperatureValue.textContent = `${e.target.value} K (${Math.floor(Number(e.target.value) + -273.15)}°C)`;
+  const inputValue = parseInt(e.target.value);
+  // Map 5-120 to -5-110
+  const displayValue = Math.round(-5 + (inputValue - 5) * (115 / 115));
+  temperatureValue.textContent = `${displayValue} °C`;
 });
 applySettingsButton.addEventListener('click', () => {
   numParticles = parseInt(numParticlesInput.value, 10);
@@ -196,19 +198,39 @@ function handleCollisions() {
 
 // Update částic
 function updateParticles() {
-  const temperature = parseInt(temperatureSlider.value, 10);
-  const restitution = (temperature <= 80) ? 0.5 : 1;
+  const inputValue = parseInt(temperatureSlider.value, 10);
+  // Map 5-120 to -5-110 for display
+  const displayValue = Math.round(-5 + (inputValue - 5) * (115 / 115));
+  
+  // Map display temperature to actual simulation temperature (never below 50K)
+  const simulationTemp = 50 + (displayValue + 5) * 2; // Maps -5°C to 50K, 110°C to 270K
+  
+  const restitution = (displayValue <= 80) ? 0.5 : 1;
   const maxTemp = 1000;
-  const effectiveGravity = gravity * ((maxTemp - temperature) / maxTemp);
-  const speedMultiplier = Math.pow(temperature / 50, 2.5);
-
+  const effectiveGravity = gravity;
+  
+  // Calculate speed multiplier based on simulation temperature
+  let speedMultiplier;
+  if (displayValue <= 10) {
+    // Set a minimum speed multiplier for very low temperatures
+    // This ensures particles continue to move even at 0°C or below
+    speedMultiplier = Math.max(0.1, (displayValue / 50) * Math.pow(0.8, Math.max(0, 10 - displayValue)));
+  } else if (displayValue <= 110) {
+    speedMultiplier = displayValue / 50;  // Linear increase up to 110°C
+  } else {
+    // Exponential increase after 110°C
+    const excessTemp = displayValue - 110;
+    speedMultiplier = (270 / 50) * Math.pow(1.008, excessTemp);
+  }
+  
   particles.forEach(particle => {
     if (particle !== selectedParticle) {
       particle.color = particleColor;
     }
-    if (temperature <= 20) {
+    // Use simulation temperature for state transitions
+    if (simulationTemp <= 150) {  // Below 150K
       particle.state = "solid";
-    } else if (temperature <= 80) {
+    } else if (simulationTemp <= 260) {  // Below 260K (matches 100°C display)
       particle.state = "liquid";
     } else {
       particle.state = "gas";
@@ -240,6 +262,26 @@ function updateParticles() {
   }
 
   handleCollisions();
+
+  particles.forEach(p1 => {
+    if (p1.state === "liquid" || p1.state === "solid") {  // Allow condensation for both liquid and solid states
+      particles.forEach(p2 => {
+        if (p1 !== p2 && (p2.state === "liquid" || p2.state === "solid")) {  // Allow interaction between liquid and solid particles
+          const dx = p2.x - p1.x;
+          const dy = p2.y - p1.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 3 * p1.radius) { // pouze pokud jsou blízko
+            // Simplified condensation based on display temperature
+            // Always apply condensation when temperature is 100°C or below (displayed)
+            const condensationStrength = (displayValue <= 100) ? 0.01 : 0;
+            
+            p1.vx += dx * condensationStrength;
+            p1.vy += dy * condensationStrength;
+          }
+        }
+      });
+    }
+  });
 }
 
 // Kreslení částic
@@ -299,6 +341,10 @@ function drawParticles() {
 function animate() {
   updateParticles();
   drawParticles();
+  
+  // Ensure piston visual position matches simulation position
+  piston.style.top = pistonSimY + "px";
+  
   requestAnimationFrame(animate);
 }
 
@@ -346,6 +392,11 @@ window.addEventListener('touchmove', (e) => {
     e.preventDefault(); // Zabrání posouvání stránky
   }
 }, { passive: false }); // Nutné pro preventDefault v některých prohlížečích
+
+// Ensure piston positions are synchronized on window resize
+window.addEventListener('resize', () => {
+  pistonSimY = pistonVisualY;
+});
 
 animate();
 
@@ -418,7 +469,9 @@ document.addEventListener("DOMContentLoaded", function() {
       const content = document.getElementById('cardText1Input').value.trim();
       localStorage.setItem('cardTitle1', title);
       localStorage.setItem('cardContent1', content);
+
       // Odložíme aktualizaci DOMu o 200 ms – to umožní korektní zavření modálu
+
       setTimeout(() => {
         document.getElementById('cardTitle1').textContent = title;
         document.getElementById('cardContent1').innerHTML = `<p class="card-text">${content}</p>`;
@@ -461,6 +514,7 @@ document.addEventListener("DOMContentLoaded", function() {
   
   
   // Při otevření modálních oken načteme aktuální obsah do formulářů
+
   function loadCardData(cardNumber) {
     const titleElem = document.getElementById(`cardTitle${cardNumber}`);
     const contentElem = document.getElementById(`cardContent${cardNumber}`);
@@ -468,7 +522,9 @@ document.addEventListener("DOMContentLoaded", function() {
     const textInput = document.getElementById(`cardText${cardNumber}Input`);
     if (titleElem && contentElem && titleInput && textInput) {
       titleInput.value = titleElem.textContent.trim();
+
       // Případně načtěte pouze obsah vnořeného <p> (pokud existuje)
+      
       const pElem = contentElem.querySelector('.card-text');
       textInput.value = pElem ? pElem.innerHTML.trim() : contentElem.innerHTML.trim();
     }
