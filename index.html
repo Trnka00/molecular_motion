@@ -112,10 +112,19 @@
             <div id="collapseSim" class="accordion-collapse collapse show" aria-labelledby="headingSim" data-bs-parent="#settingsAccordion">
               <div class="accordion-body">
                 <div class="mb-3">
-                  <label for="temperature" class="form-label">Teplota: <span id="temperatureValue">0</span></label>
-                  <input type="range" class="form-range" id="temperature" min="5" max="250"  value="118">
-                  
-
+                  <label class="form-label">Teplota:</label>
+                  <div class="d-flex align-items-center justify-content-center">
+                    <button id="decreaseTemp" class="btn btn-outline-danger me-2">
+                      <i class="bi bi-dash-lg"></i>
+                    </button>
+                    <div class="temperature-display bg-light p-2 rounded text-center" style="min-width: 80px;">
+                      <span id="temperatureDisplay">0</span> °C
+                    </div>
+                    <button id="increaseTemp" class="btn btn-outline-danger ms-2">
+                      <i class="bi bi-plus-lg"></i>
+                    </button>
+                  </div>
+                  <input type="hidden" id="temperature" value="118">
                 </div>
                 <div class="mb-3">
                   <label for="numParticles" class="form-label">Počet částic:</label>

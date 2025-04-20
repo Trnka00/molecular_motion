@@ -1,5 +1,8 @@
 const temperatureSlider = document.getElementById('temperature');
-const temperatureValue = document.getElementById('temperatureValue');
+
+const temperatureDisplay = document.getElementById('temperatureDisplay');
+const decreaseTempButton = document.getElementById('decreaseTemp');
+const increaseTempButton = document.getElementById('increaseTemp');
 const numParticlesInput = document.getElementById('numParticles');
 const particleSizeInput = document.getElementById('particleSize');
 const particleShapeSelect = document.getElementById('particleShape');
@@ -37,6 +40,83 @@ let trajectoryPoints = [];
 let pistonVisualY = 0;
 let pistonSimY = 0;
 let isDragging = false;
+
+// Temperature control with buttons
+let tempChangeInterval = null;
+let tempChangeTimeout = null;
+const tempChangeDelay = 250; // ms between temperature changes
+const tempChangeAmount = 1; // amount to change temperature by
+const initialDelay = 500; // ms to wait before starting continuous change
+
+function updateTemperatureDisplay() {
+  const inputValue = parseInt(temperatureSlider.value, 10);
+  // Map 5-120 to -5-110
+  const displayValue = Math.round(-5 + (inputValue - 5) * (115 / 115));
+
+  temperatureDisplay.textContent = displayValue;
+}
+
+function changeTemperature(increase) {
+  const currentValue = parseInt(temperatureSlider.value, 10);
+  const minValue = 5;
+  const maxValue = 250;
+  
+  if (increase) {
+    temperatureSlider.value = Math.min(currentValue + tempChangeAmount, maxValue);
+  } else {
+    temperatureSlider.value = Math.max(currentValue - tempChangeAmount, minValue);
+  }
+  
+  updateTemperatureDisplay();
+}
+
+function startTempChange(increase) {
+  // Clear any existing intervals or timeouts
+  if (tempChangeInterval) {
+    clearInterval(tempChangeInterval);
+    tempChangeInterval = null;
+  }
+  if (tempChangeTimeout) {
+    clearTimeout(tempChangeTimeout);
+    tempChangeTimeout = null;
+  }
+  
+  // Change temperature immediately once
+  changeTemperature(increase);
+  
+  // Set up timeout for continuous change
+  tempChangeTimeout = setTimeout(() => {
+    // After the initial delay, start continuous change
+    tempChangeInterval = setInterval(() => {
+      changeTemperature(increase);
+    }, tempChangeDelay);
+  }, initialDelay);
+}
+
+function stopTempChange() {
+  if (tempChangeInterval) {
+    clearInterval(tempChangeInterval);
+    tempChangeInterval = null;
+  }
+  if (tempChangeTimeout) {
+    clearTimeout(tempChangeTimeout);
+    tempChangeTimeout = null;
+  }
+}
+
+// Event listeners for temperature buttons
+decreaseTempButton.addEventListener('mousedown', () => startTempChange(false));
+increaseTempButton.addEventListener('mousedown', () => startTempChange(true));
+decreaseTempButton.addEventListener('touchstart', () => startTempChange(false));
+increaseTempButton.addEventListener('touchstart', () => startTempChange(true));
+
+// Stop temperature change when button is released
+window.addEventListener('mouseup', stopTempChange);
+window.addEventListener('touchend', stopTempChange);
+window.addEventListener('mouseleave', stopTempChange);
+
+// Initialize temperature display
+updateTemperatureDisplay();
 
 // Event listenery
 particleShapeSelect.addEventListener('change', (e) => {
@@ -94,7 +174,7 @@ window.addEventListener('load', () => {
   // Update initial temperature display
   const inputValue = parseInt(temperatureSlider.value, 10);
   const displayValue = Math.round(-5 + (inputValue - 5) * (115 / 115));
-  temperatureValue.textContent = `${displayValue} °C`;
+
   
   // Načtení poznámek z localStorage
   const note1 = localStorage.getItem('note1');
@@ -123,12 +203,6 @@ window.addEventListener('load', () => {
 
 startSimulation();
 
-temperatureSlider.addEventListener('input', (e) => {
-  const inputValue = parseInt(e.target.value);
-  // Map 5-120 to -5-110
-  const displayValue = Math.round(-5 + (inputValue - 5) * (115 / 115));
-  temperatureValue.textContent = `${displayValue} °C`;
-});
 applySettingsButton.addEventListener('click', () => {
   numParticles = parseInt(numParticlesInput.value, 10);
   particleSize = parseInt(particleSizeInput.value, 10);
@@ -211,12 +285,15 @@ function updateParticles() {
   
   // Calculate speed multiplier based on simulation temperature
   let speedMultiplier;
-  if (displayValue <= 10) {
-    // Set a minimum speed multiplier for very low temperatures
-    // This ensures particles continue to move even at 0°C or below
-    speedMultiplier = Math.max(0.1, (displayValue / 50) * Math.pow(0.8, Math.max(0, 10 - displayValue)));
+  if (displayValue <= 4) {
+    // More aggressive decrease below 4°C
+    // Using a steeper exponential decay
+    speedMultiplier = Math.max(0.05, Math.pow(0.6, Math.abs(displayValue - 4)));
   } else if (displayValue <= 110) {
-    speedMultiplier = displayValue / 50;  // Linear increase up to 110°C
+    // Linear increase up to 110°C
+    // Ensure smooth transition at 4°C by using the same value at the boundary
+    const baseSpeed = Math.pow(0.7, 0); // This equals 1
+    speedMultiplier = baseSpeed + ((displayValue - 4) / 50);
   } else {
     // Exponential increase after 110°C
     const excessTemp = displayValue - 110;
@@ -271,9 +348,18 @@ function updateParticles() {
           const dy = p2.y - p1.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist < 3 * p1.radius) { // pouze pokud jsou blízko
-            // Simplified condensation based on display temperature
-            // Always apply condensation when temperature is 100°C or below (displayed)
-            const condensationStrength = (displayValue <= 100) ? 0.01 : 0;
+            // Gradual transition of condensation strength around 100°C
+            let condensationStrength = 0;
+            
+            if (displayValue <= 95) {
+              // Full condensation below 95°C
+              condensationStrength = 0.01;
+            } else if (displayValue <= 105) {
+              // Gradual decrease between 95°C and 105°C
+              const transitionFactor = (105 - displayValue) / 10; // 1 at 95°C, 0 at 105°C
+              condensationStrength = 0.01 * transitionFactor;
+            }
+            // No condensation above 105°C
             
             p1.vx += dx * condensationStrength;
             p1.vy += dy * condensationStrength;
